@@ -12,22 +12,100 @@
   
   <!-- Critical inline styles to prevent flash of unstyled content -->
   <style nonce="<%= cspNonce %>">
-    .conversation-item {
+    .lesson-item {
       background: transparent;
       border: none;
-      padding: 0.5rem 1rem;
-      display: block;
+      padding: 0.75rem 1rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
       text-align: left;
       width: 100%;
+      border-radius: 8px;
+      margin-bottom: 0.25rem;
+      transition: background-color 0.2s ease;
+      font-weight: 500;
     }
-    .conversation-item:hover {
+    .lesson-item:hover {
       background-color: rgba(0,0,0,0.05);
     }
-    .conversation-group-header {
+    .lesson-item.active {
+      background-color: #007bff;
+      color: white;
+    }
+    .lesson-status {
       font-size: 0.8rem;
-      color: #6c757d;
+      opacity: 0.7;
+    }
+    .lesson-item.active .lesson-status {
+      opacity: 1;
+    }
+    .lesson-part-nav {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+      padding: 1rem;
+      background: #f8f9fa;
+      border-radius: 8px;
+    }
+    .part-button {
+      flex: 1;
+      padding: 0.5rem 0.75rem;
+      border: 1px solid #dee2e6;
+      background: white;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-size: 0.9rem;
+    }
+    .part-button:hover {
+      background: #e9ecef;
+    }
+    .part-button.active {
+      background: #007bff;
+      color: white;
+      border-color: #007bff;
+    }
+    .lesson-content {
+      padding: 1rem;
+      line-height: 1.6;
+    }
+    .lesson-content h3 {
+      color: #007bff;
+      margin-bottom: 1rem;
+    }
+    .flashcard-container {
+      text-align: center;
+      margin: 1.5rem 0;
+    }
+    .lesson-flashcard {
+      max-width: 300px;
+      width: 100%;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    .lesson-footer {
+      padding: 1rem;
+      border-top: 1px solid #dee2e6;
+      background: #f8f9fa;
+    }
+    .lesson-navigation {
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+    .nav-button {
       padding: 0.5rem 1rem;
-      margin-top: 0.5rem;
+      border: 1px solid #007bff;
+      background: white;
+      color: #007bff;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .nav-button:hover {
+      background: #007bff;
+      color: white;
     }
   </style>
   
@@ -75,18 +153,24 @@
       <div class="sidebar">
         <div class="sidebar-content">
           <div class="sidebar-header">
-            <span>Conversations</span>
-            <button id="new-chat-btn" class="new-chat-btn">New Chat</button>
+            <span>Hebrew Lessons</span>
           </div>
-          <div class="chat-options">
-            <label class="switch" title="Temporary chats are not saved and will be lost when you leave the page.">
-              <input type="checkbox" id="temp-chat-toggle">
-              <span class="slider round"></span>
-              <span class="switch-label">Temporary Chat</span>
-            </label>
-          </div>
-          <div class="conversation-list">
-            <!-- Conversations will be loaded here dynamically -->
+          <div class="lesson-list">
+            <% for (let i = 1; i <= 18; i++) { %>
+              <button 
+                type="button" 
+                class="lesson-item <%= typeof lessonNumber !== 'undefined' && i == lessonNumber ? 'active' : '' %>" 
+                data-lesson="<%= i %>"
+                onclick="selectLesson(<%= i %>)"
+              >
+                Lesson <%= i %>
+                <% if (i <= 2) { %>
+                  <span class="lesson-status">✓</span>
+                <% } else { %>
+                  <span class="lesson-status">📝</span>
+                <% } %>
+              </button>
+            <% } %>
           </div>
           
         </div>
@@ -96,50 +180,46 @@
       <div class="chat-area">
         <!-- Mobile header removed as hamburger menu is now in navbar -->
 
-        <!-- Chat messages container -->
-        <div class="chat-container">
-          <% if (typeof chat_history !== 'undefined' && chat_history.length > 0) { %>
-            <% chat_history.forEach(message => { %>
-              <div class="message-role <%= message.role === 'user' ? 'user' : '' %>">
-                <%= message.role.charAt(0).toUpperCase() + message.role.slice(1) %>
-              </div>
-              <div class="<%= message.role === 'user' ? 'user-message' : 'assistant-message' %>">
-                <% if (message.role === 'assistant') { %>
-                  <%- message.content %>
-                <% } else { %>
-                  <%= message.content %>
-                <% } %>
-              </div>
-            <% }); %>
-          <% } %>
+        <!-- Lesson content container -->
+        <div class="lesson-container">
+          <div id="lesson-welcome" class="lesson-content">
+            <h2>Welcome to Hebrew Today!</h2>
+            <p>Select a lesson from the sidebar to begin your Hebrew learning journey.</p>
+            <p>Each lesson contains 4 parts:</p>
+            <ul>
+              <li><strong>New Vocabulary</strong> - Learn new words with flashcards</li>
+              <li><strong>Sentence Pattern</strong> - Build sentences using vocabulary</li>
+              <li><strong>Free Speech</strong> - Practice speaking aloud</li>
+              <li><strong>Hebrew Letters & Vowels</strong> - Learn letter recognition and pronunciation</li>
+            </ul>
+          </div>
+          
+          <div id="lesson-content" class="lesson-content" style="display: none;">
+            <!-- Lesson part navigation -->
+            <div class="lesson-part-nav">
+              <button class="part-button active" data-part="1">1. Vocabulary</button>
+              <button class="part-button" data-part="2">2. Sentence Pattern</button>
+              <button class="part-button" data-part="3">3. Free Speech</button>
+              <button class="part-button" data-part="4">4. Letters & Vowels</button>
+            </div>
+            
+            <!-- Lesson content will be loaded here -->
+            <div id="current-part-content">
+              <!-- Content loaded dynamically -->
+            </div>
+          </div>
         </div>
         
-        <!-- Message input form -->
-        <div class="message-input-container">
-          <form id="chat-form" class="message-form">
-            <textarea 
-              id="message-input" 
-              name="message" 
-              placeholder="Message..." 
-              required
-              rows="1"
-              aria-label="Type your message"
-            ></textarea>
-            <div class="button-group">
-              <button type="submit" id="send-btn" class="icon-button" aria-label="Send message">
-                <span>Send</span>
-                <i class="bi bi-send"></i>
-              </button>
-              <button type="button" id="stop-btn" class="icon-button" disabled aria-label="Stop generation">
-                <span>Stop</span>
-                <i class="bi bi-stop-fill"></i>
-              </button>
-              <button type="button" id="clear-btn" class="icon-button" aria-label="Clear chat">
-                <span>Clear</span>
-                <i class="bi bi-trash"></i>
-              </button>
-            </div>
-          </form>
+        <!-- Lesson navigation footer -->
+        <div class="lesson-footer" id="lesson-footer" style="display: none;">
+          <div class="lesson-navigation">
+            <button id="prev-lesson-btn" class="nav-button" onclick="navigateLesson(-1)">
+              <i class="bi bi-chevron-left"></i> Previous Lesson
+            </button>
+            <button id="next-lesson-btn" class="nav-button" onclick="navigateLesson(1)">
+              Next Lesson <i class="bi bi-chevron-right"></i>
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -177,109 +257,122 @@
   <script src="/static/js/navbar-debug.js"></script>
   <script src="/static/js/mobile-nav.js"></script>
   
-  <!-- Conversation history management script -->
+  <!-- Lesson management script -->
   <script nonce="<%= cspNonce %>">
-    // Bootstrap the initial conversationId from the server
-    let conversationId = '<%= typeof conversationId !== "undefined" ? conversationId : "" %>';
-    const sidebarEl = document.querySelector('.conversation-list');
-    const chatContainer = document.querySelector('.chat-container');
+    let currentLesson = null;
+    let currentPart = 1;
+    let lessonData = {};
 
-    // Helper to escape HTML
-    function escapeHtml(str) {
-      const div = document.createElement('div');
-      div.textContent = str;
-      return div.innerHTML;
-    }
-
-    // Render the conversation list
-    // Override the global placeholder with the actual implementation
-    window.loadConversations = async function() {
-      const res = await fetch('/conversation_history', { credentials: 'same-origin' });
-      const { success, history } = await res.json();
-      if (!success) return;
-      sidebarEl.innerHTML = '';
-      for (const group of ['Today','Previous 7 Days','Previous 30 Days']) {
-        if (!history[group] || !history[group].length) continue;
-        const header = document.createElement('div');
-        header.className = 'conversation-group-header';
-        header.textContent = group;
-        sidebarEl.appendChild(header);
-        for (const conv of history[group]) {
-          const btn = document.createElement('button');
-          btn.type = 'button';
-          btn.className = 'conversation-item';
-          btn.dataset.id = conv.id;
-          btn.innerHTML = escapeHtml(conv.preview);
-          btn.addEventListener('click', () => selectConversation(conv.id));
-          sidebarEl.appendChild(btn);
-        }
-      }
-    }
-
-    // Load one conversation's messages
-    async function selectConversation(id) {
-      const res = await fetch(`/get_conversation/${id}`, { credentials: 'same-origin' });
-      const data = await res.json();
-      if (!data.success) return;
-      conversationId = data.conversation_id;
-      renderMessages(data.chat_history);
-    }
-
-    // Draw the messages in the main pane
-    function renderMessages(msgs) {
-      chatContainer.innerHTML = '';
-      for (const m of msgs) {
-        const roleDiv = document.createElement('div');
-        roleDiv.className = `message-role ${m.role==='user'?'user':''}`;
-        roleDiv.textContent = m.role.charAt(0).toUpperCase()+m.role.slice(1);
-        chatContainer.appendChild(roleDiv);
-        const b = document.createElement('div');
-        b.className = m.role==='user' ? 'user-message' : 'assistant-message';
-        b.innerHTML = m.content;       // your EJS already handles safe HTML for assistants
-        chatContainer.appendChild(b);
-      }
-      // scroll to bottom
-      chatContainer.scrollTop = chatContainer.scrollHeight;
-    }
-
-    // New Chat / Clear handlers
-    document.getElementById('new-chat-btn').addEventListener('click', async () => {
-      const wasTemporary = document.getElementById('temp-chat-toggle').checked;
-      console.log('reset: wasTemporary=', wasTemporary);
-      const res = await fetch('/reset', { 
-        method: 'POST', 
-        credentials: 'same-origin',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ wasTemporary })
+    // Lesson selection from sidebar
+    function selectLesson(lessonNumber) {
+      currentLesson = lessonNumber;
+      currentPart = 1;
+      
+      // Update active lesson in sidebar
+      document.querySelectorAll('.lesson-item').forEach(item => {
+        item.classList.remove('active');
       });
-      const data = await res.json();
-      if (data.success) {
-        conversationId = data.new_conversation_id;
-        chatContainer.innerHTML = '';    // clear UI
-        if (!wasTemporary) window.loadConversations();  // only refresh sidebar for permanent chats
-      }
-    });
-    
-    document.getElementById('clear-btn').addEventListener('click', () => {
-      document.getElementById('new-chat-btn').click();
-    });
+      document.querySelector(`[data-lesson="${lessonNumber}"]`).classList.add('active');
+      
+      // Show lesson content, hide welcome
+      document.getElementById('lesson-welcome').style.display = 'none';
+      document.getElementById('lesson-content').style.display = 'block';
+      document.getElementById('lesson-footer').style.display = 'block';
+      
+      // Load lesson data and display first part
+      loadLessonData(lessonNumber).then(() => {
+        displayPart(1);
+        updatePartNavigation();
+        updateLessonNavigation();
+      });
+    }
 
-    // Update local conversationId when it changes in the window global
-    function updateLocalConversationId() {
-      if (window.currentConversationId && window.currentConversationId !== conversationId) {
-        conversationId = window.currentConversationId;
-        console.log('Local conversationId updated from global:', conversationId);
+    // Load lesson data from server
+    async function loadLessonData(lessonNumber) {
+      try {
+        const response = await fetch(`/api/lesson/${lessonNumber}/content`, {
+          credentials: 'same-origin'
+        });
+        const data = await response.json();
+        
+        if (data.success) {
+          lessonData[lessonNumber] = data.lesson;
+        } else {
+          throw new Error('Failed to load lesson');
+        }
+      } catch (error) {
+        console.error('Failed to load lesson data:', error);
+        // Use fallback content
+        lessonData[lessonNumber] = {
+          title: `Lesson ${lessonNumber}`,
+          parts: [
+            { title: "New Vocabulary", content: "Loading content..." },
+            { title: "Sentence Pattern", content: "Loading content..." },
+            { title: "Free Speech", content: "Loading content..." },
+            { title: "Hebrew Letters & Vowels", content: "Loading content..." }
+          ]
+        };
       }
     }
-    
-    // Check for updates periodically (less frequently to reduce overhead)
-    setInterval(updateLocalConversationId, 2000);
 
-    // On load, populate conversation history immediately
-    // Don't wait for DOMContentLoaded as it may have already fired
-    window.loadConversations();
+    // Display specific part of current lesson
+    function displayPart(partNumber) {
+      if (!lessonData[currentLesson]) return;
+      
+      currentPart = partNumber;
+      const part = lessonData[currentLesson].parts[partNumber - 1];
+      
+      if (part) {
+        document.getElementById('current-part-content').innerHTML = `
+          <h3>${part.title}</h3>
+          <div class="part-content">${part.content}</div>
+        `;
+      }
+      
+      updatePartNavigation();
+    }
+
+    // Update part navigation buttons
+    function updatePartNavigation() {
+      document.querySelectorAll('.part-button').forEach((btn, index) => {
+        btn.classList.toggle('active', index + 1 === currentPart);
+      });
+    }
+
+    // Update lesson navigation buttons
+    function updateLessonNavigation() {
+      const prevBtn = document.getElementById('prev-lesson-btn');
+      const nextBtn = document.getElementById('next-lesson-btn');
+      
+      prevBtn.style.display = currentLesson > 1 ? 'block' : 'none';
+      nextBtn.style.display = currentLesson < 18 ? 'block' : 'none';
+    }
+
+    // Navigate between lessons
+    function navigateLesson(direction) {
+      const newLesson = currentLesson + direction;
+      if (newLesson >= 1 && newLesson <= 18) {
+        selectLesson(newLesson);
+      }
+    }
+
+    // Part navigation click handlers
+    document.querySelectorAll('.part-button').forEach(button => {
+      button.addEventListener('click', (e) => {
+        const partNumber = parseInt(e.target.dataset.part);
+        displayPart(partNumber);
+      });
+    });
+
+    // Initialize - select lesson 1 by default or from URL
+    window.addEventListener('load', () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const lessonFromUrl = urlParams.get('lesson');
+      
+      if (lessonFromUrl && lessonFromUrl >= 1 && lessonFromUrl <= 18) {
+        selectLesson(parseInt(lessonFromUrl));
+      }
+    });
   </script>
 </body>
 </html>
