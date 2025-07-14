@@ -18,6 +18,11 @@ async function ensureDatabaseInitialized() {
     console.log('Ensuring database is initialized before accessing models');
     await db.initializeDatabase();
   }
+  
+  if (!db.User) {
+    throw new Error('Database User model is not available. Check database connection and secrets configuration.');
+  }
+  
   return db.User;
 }
 
