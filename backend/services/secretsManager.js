@@ -13,24 +13,12 @@ const config = require('../config');
 async function getSecret(secretName, region = config.aws.region, secretType = 'plain_text') {
   console.log(`Attempting to retrieve secret: ${secretName} from region: ${region}`);
   
-  // Check if this is an email-related secret
-  const isEmailSecret = secretName.includes('mail') || secretName.includes('smtp');
-  
   try {
-    // Create AWS Secrets Manager client with appropriate credentials
+    // Create AWS Secrets Manager client with default credentials
+    // Cross-account role should only be used for S3 and Bedrock, not Secrets Manager
     let clientOptions = { region };
     
-    // Only use cross-account role for non-email secrets if specified
-    if (!isEmailSecret && process.env.CUSTOMER_CROSS_ACCOUNT_ROLE_ARN) {
-      console.log(`Using cross-account role: ${process.env.CUSTOMER_CROSS_ACCOUNT_ROLE_ARN}`);
-      clientOptions.credentials = new AWS.ChainableTemporaryCredentials({
-        params: {
-          RoleArn: process.env.CUSTOMER_CROSS_ACCOUNT_ROLE_ARN
-        }
-      });
-    } else {
-      console.log('Using default credentials chain');
-    }
+    console.log('Using default credentials chain for Secrets Manager');
     
     const client = new AWS.SecretsManager(clientOptions);
 
@@ -56,23 +44,6 @@ async function getSecret(secretName, region = config.aws.region, secretType = 'p
     return secret;
   } catch (error) {
     console.error(`Error retrieving secret ${secretName}: ${error.message}`);
-    
-    // Provide fallback values for email-related secrets
-    if (isEmailSecret) {
-      const fallbacks = {
-        'bedrockflask-mail-server-13jwl6gq': 'smtp.gmail.com',
-        'bedrockflask-mail-port-13jwl6gq': '587',
-        'bedrockflask-mail-tls-13jwl6gq': 'true',
-        'bedrockflask-mail-sender-13jwl6gq': 'bedrock.express.ai@gmail.com',
-        'bedrockflask-mail-password-13jwl6gq': 'app-password-here' // Replace with actual app password if available
-      };
-      
-      if (fallbacks[secretName]) {
-        console.log(`Using fallback value for email secret: ${secretName}`);
-        return fallbacks[secretName];
-      }
-    }
-    
     throw error;
   }
 }
